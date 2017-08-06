@@ -43,7 +43,10 @@ def spectrogram(samples, fft_length=256, sample_rate=2, hop_length=128):
     x = as_strided(x, shape=nshape, strides=nstrides)
 
     # window stride sanity check
-    assert np.all(x[:, 1] == samples[hop_length:(hop_length + fft_length)])
+    try:
+        assert np.all(x[:, 1] == samples[hop_length:(hop_length + fft_length)])
+    except:
+        return None, None
 
     # broadcast window, compute fft over columns and square mod
     x = np.fft.rfft(x * window, axis=0)
@@ -69,7 +72,10 @@ def spectrogram_from_file(filename, step=10, window=20, max_freq=None,
             [0, max_freq] are returned
         eps (float): Small value to ensure numerical stability (for ln(x))
     """
-    sample_rate, audio = wavfile.read(filename)
+    try:
+        sample_rate, audio = wavfile.read(filename)
+    except:
+        return None
     #audio = sound_file.read(dtype='float32')
     #sample_rate = sound_file.samplerate
     if audio.ndim >= 2:
@@ -77,8 +83,9 @@ def spectrogram_from_file(filename, step=10, window=20, max_freq=None,
     if max_freq is None:
         max_freq = sample_rate / 2
     if max_freq > sample_rate / 2:
-        raise ValueError("max_freq must not be greater than half of "
-                         " sample rate")
+        return None
+        #raise ValueError("max_freq must not be greater than half of "
+        #                 " sample rate")
     if step > window:
         raise ValueError("step size must not be greater than window size")
     hop_length = int(0.001 * step * sample_rate)
@@ -86,5 +93,7 @@ def spectrogram_from_file(filename, step=10, window=20, max_freq=None,
     pxx, freqs = spectrogram(
         audio, fft_length=fft_length, sample_rate=sample_rate,
         hop_length=hop_length)
+    if pxx is None:
+        return None
     ind = np.where(freqs <= max_freq)[0][-1] + 1
     return np.transpose(np.log(pxx[:ind, :] + eps))
