@@ -1,6 +1,13 @@
 import numpy as np
 from scipy.io import wavfile
 from numpy.lib.stride_tricks import as_strided
+from os import listdir
+from pydub import AudioSegment
+import random
+
+DATA_SET_FOLDER_PATH = 'D:/dataset/voice/'
+DATA_SET_NOISE_PATH = 'D:/dataset/other/'
+DATA_SET_COMBINE_VOICE = 'D:/dataset/combine/'
 
 def spectrogram(samples, fft_length=256, sample_rate=2, hop_length=128):
     """
@@ -97,3 +104,26 @@ def spectrogram_from_file(filename, step=10, window=20, max_freq=None,
         return None
     ind = np.where(freqs <= max_freq)[0][-1] + 1
     return np.transpose(np.log(pxx[:ind, :] + eps))
+
+
+def combine_waves():
+    for file in listdir(path=DATA_SET_FOLDER_PATH):
+        try:
+            sound1 = AudioSegment.from_wav(DATA_SET_FOLDER_PATH + file)
+            noise_wav = random.choice( listdir(DATA_SET_NOISE_PATH))
+            sound2 = AudioSegment.from_wav(DATA_SET_NOISE_PATH + noise_wav)
+            newone = sound1.overlay(sound2, loop=True)
+            newone.export(DATA_SET_COMBINE_VOICE + file, format='wav')
+        except:
+            continue
+
+def clear_white_noise(filename):
+    middle_point = 128
+    threshold = 1
+    x, audio_bytes = wav.read(filename)
+    new_audio = []
+    for byte in audio_bytes:
+        if byte > threshold + middle_point or byte < middle_point - threshold:
+            new_audio.append(byte)
+    wav_array = np.array(new_audio)
+    wav.write(filename, x, wav_array)
