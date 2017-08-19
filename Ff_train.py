@@ -8,6 +8,7 @@ from keras.callbacks import EarlyStopping
 from keras.models import Sequential
 from keras.layers import Dense
 from keras import optimizers
+from sklearn.preprocessing import MinMaxScaler
 
 # combine the files to have with noise and without
 #su.combine_waves()
@@ -30,9 +31,9 @@ callback = [EarlyStopping(monitor='val_loss', patience=5, mode='auto')]
 
 model = Sequential()
 model.add(Dense(100, input_dim=look_back*23))
-model.add(Dense(60, activation='elu'))
-model.add(Dense(60, activation='softsign'))
-model.add(Dense(120, activation='tanh'))
+model.add(Dense(60, activation='sigmoid'))
+model.add(Dense(60, activation='sigmoid'))
+model.add(Dense(120, activation='sigmoid'))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
@@ -41,15 +42,24 @@ try:
 except:
     print('could not load the saved model file')
 
+y=[]
+data=[]
 for sample in train_samples:
     X = su.spectrogram_from_file(filename=sample[0], max_freq=8000)
     if X is None:
         continue;
-    X = nn.prepare_feedforward_data(X, look_back=look_back)
-    y = np.ones(X.shape[0]) * sample[1]
-    #model.fit(X, y, batch_size=batch_size, epochs=epochs, verbose=2, validation_split=0.2, callbacks=callback)
-    for i in range(batch_size):
-        model.train_on_batch(X, y)
+    X = su.prepare_feedforward_data(X, look_back=look_back)
+    for x in X:
+        data.extend([xx for xx in x])
+        print(len(data))
+
+    y.extend([y for y in np.ones(X.shape[0], dtype=float) * sample[1]])
+
+y = np.asarray(y, dtype=float)
+y = y.reshape(y.shape[0], 1)
+X = np.asarray(data, dtype=float)
+X = X.reshape(int(X.shape[0]) / 115, 115)
+model.fit(X, y, batch_size=batch_size, epochs=epochs, verbose=2, validation_split=0.3, callbacks=callback)
 
 model.save_weights(model_file)
 
@@ -63,7 +73,7 @@ model.save_weights(model_file)
     #print('evaluation after batch: ', nn.evaluate(X, y))
     #print('evaluation of test after batch: ', nn.evaluate(X_test, y_test))
 
-train_sample = random.choice(test_samples)
+'''train_sample = random.choice(test_samples)
 X_test = su.spectrogram_from_file(filename=train_sample[0], max_freq=8000)
 X_test = su.prepare_feedforward_data(X_test, look_back = 5)
 y_test = np.ones(X_test.shape[0]) * sample[1]
@@ -87,3 +97,4 @@ for sample in test_samples:
 scores = np.asarray(scores, dtype=float)
 score = np.mean(scores)
 print(score * 100)
+'''

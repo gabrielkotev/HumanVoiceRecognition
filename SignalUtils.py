@@ -36,6 +36,7 @@ def prepare_feedforward_data(X, look_back = 5):
     return np.reshape(new_data, (int(len(new_data) / (step * look_back)), step * look_back))
 
 def prepare_lstm_data(X, batch_size=32):
+    print(X.shape)
     rows = X.shape[0]
     cols = X.shape[1]
 
