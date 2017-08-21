@@ -1,15 +1,30 @@
 import numpy as np
 from scipy.io import wavfile
 from numpy.lib.stride_tricks import as_strided
-from os import listdir
+from os import listdir, remove
 from pydub import AudioSegment
 import random
 import matplotlib.pyplot as plt
 from scipy.fftpack import rfft, irfft, fftfreq
 
-DATA_SET_FOLDER_PATH = 'D:/dataset/voice/'
-DATA_SET_NOISE_PATH = 'D:/dataset/other/'
-DATA_SET_COMBINE_VOICE = 'D:/dataset/combine/'
+def prepare_simple_feedforward_data(X, look_back = 5):
+    prepared_data = []
+    for x in X:
+        prepared_data.extend([x for x in X])
+    
+    prepared_data = X.flatten()#np.asarray(prepared_data, dtype=float).flatten()
+    new_data = []
+    step = int(X[0].size)
+    start_point = 0
+    end_point = step * look_back
+    while(end_point < prepared_data.shape[0]):
+        new_data.extend([s for s in prepared_data[start_point:end_point]])
+        start_point += step
+        end_point += step
+
+    new_data = np.asarray(new_data, dtype=float)
+    print(new_data.shape)
+    return new_data.reshape(int(len(new_data) / (step * look_back)), step * look_back)
 
 def prepare_feedforward_data(X, look_back = 5):
     prepared_data = []
@@ -145,27 +160,60 @@ def spectrogram_from_file(filename, step=10, window=20, max_freq=None,
     ind = np.where(freqs <= max_freq)[0][-1] + 1
     return np.transpose(np.log(pxx[:ind, :] + eps))
 
-def combine_waves():
-    for file in listdir(path=DATA_SET_FOLDER_PATH):
-        try:
-            sound1 = AudioSegment.from_wav(DATA_SET_FOLDER_PATH + file)
-            noise_wav = random.choice(listdir(DATA_SET_NOISE_PATH))
-            sound2 = AudioSegment.from_wav(DATA_SET_NOISE_PATH + noise_wav)
-            newone = sound1.overlay(sound2, loop=True)
-            newone.export(DATA_SET_COMBINE_VOICE + file, format='wav')
-        except:
-            continue
+def combine_waves(voice_dir, noise_dir, combine_dir):
+    for file in listdir(path=voice_dir):
+        for i in range(2):
+            try:
+                sound1 = AudioSegment.from_wav(voice_dir + file)
+                noise_wav = random.choice(listdir(noise_dir))
+                sound2 = AudioSegment.from_wav(noise_dir + noise_wav)
+                newone = sound1.overlay(sound2, loop=True)
+                newone.export(combine_dir + str(i) +  file, format='wav')
+            except:
+                continue
 
-def clear_white_noise(filename):
+def clear_white_noise(filename, old_path, new_path):
     middle_point = 128
     threshold = 1
-    x, audio_bytes = wav.read(filename)
+    frame_rate, audio_bytes = wavfile.read(old_path + filename)
     new_audio = []
     for byte in audio_bytes:
         if byte > threshold + middle_point or byte < middle_point - threshold:
             new_audio.append(byte)
     wav_array = np.array(new_audio)
-    wav.write(filename, x, wav_array)
+    wav_array = _take_max_sec(frame_rate, wav_array)
+    wavfile.write(new_path + filename, frame_rate, wav_array)
+
+def shorten(filename, old_path, new_path):
+    frame_rate, audio_bytes = wavfile.read(old_path + filename)
+    if audio_bytes.shape[0] < frame_rate:
+        remove(old_path + filename)
+        return
+    print(audio_bytes.shape)
+    wav_array = _take_max_sec(frame_rate, audio_bytes)
+    try:
+        wavfile.write(new_path + filename, frame_rate, wav_array)
+    except:
+        remove(old_path + filename)
+
+def _take_max_sec(frame_rate, audio_bytes):
+    max_value = audio_bytes.max()
+    index = audio_bytes.tolist().index(max_value)
+    start_point = int(index/2)
+    if start_point >= 0 and start_point + frame_rate < audio_bytes.shape[0]:
+        wav_array = np.array(audio_bytes[start_point:start_point + frame_rate])
+    elif index + frame_rate <= audio_bytes.shape[0]:
+        wav_array = np.array(audio_bytes[index: index + frame_rate])
+    else:
+        return None
+    return wav_array
+
+def delete_if_unsuitable(file):
+    frame_rate, X = wavfile.read(file)
+    if frame_rate != 16000:
+        remove(file)
+        return True
+    return False
 
 def take_single(X_test):
     single_sample = []

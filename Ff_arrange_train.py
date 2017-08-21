@@ -25,9 +25,9 @@ test_samples = files_mapping[test_index:len(files_mapping)]
 batch_size=32
 look_back = 5
 epochs = 200
-model_file = "d:/dataset/model.h5"
+model_file = "d:/dataset/arrange_model.h5"
 
-callback = [EarlyStopping(monitor='val_loss', patience=5, mode='auto')]
+callback = [EarlyStopping(monitor='val_loss', patience=20, mode='auto')]
 
 model = Sequential()
 model.add(Dense(100, input_dim=look_back*23))
@@ -57,8 +57,18 @@ for sample in train_samples:
 
 y = np.asarray(y, dtype=float)
 y = y.reshape(y.shape[0], 1)
+
 X = np.asarray(data, dtype=float)
-X = X.reshape(int(X.shape[0]) / 115, 115)
+min = -15
+max = 15
+
+scaled_data = [(sample-min)/(max-min) for sample in data]
+scaled_data = np.asarray(scaled_data, dtype=float)
+X = scaled_data.reshape(int(X.shape[0]) / 115, 115)
+
+print(X.min())
+print(X.max())
+
 model.fit(X, y, batch_size=batch_size, epochs=epochs, verbose=2, validation_split=0.3, callbacks=callback)
 
 model.save_weights(model_file)

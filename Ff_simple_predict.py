@@ -8,36 +8,50 @@ from keras.callbacks import EarlyStopping
 from keras.models import Sequential
 from keras.layers import Dense
 from keras import optimizers
+from config import get_mapping_paths as paths
 
-# combine the files to have with noise and without
-#su.combine_waves()
 
-trains_samples, test_samples = su.get_samples()
+paths_mapping = paths()# [("D:/dataset/combine/", 1), ("D:/dataset/other/", 0), ("D:/dataset/voice/", 1)]
+files_mapping = []
+for path_mapping in paths_mapping:
+    files_mapping.extend([(path_mapping[0] + file, path_mapping[1]) for file in listdir(path_mapping[0])])
+random.shuffle(files_mapping)
+test_index = int(0.6 * len(files_mapping))
+train_samples = files_mapping[0:test_index]
+test_samples = files_mapping[test_index:len(files_mapping)]
 
 batch_size=32
 look_back = 5
 epochs = 200
-model_file = "d:/dataset/model3.h5"
+model_file = "d:/dataset/simple_model.h5"
 
 callback = [EarlyStopping(monitor='val_loss', patience=5, mode='auto')]
 
 model = Sequential()
-model.add(Dense(100, input_dim=look_back*23))
-model.add(Dense(60, activation='elu'))
-model.add(Dense(60, activation='softsign'))
-model.add(Dense(120, activation='tanh'))
+model.add(Dense(100, input_dim=look_back*161))
+model.add(Dense(60, activation='sigmoid'))
+model.add(Dense(60, activation='sigmoid'))
+model.add(Dense(120, activation='sigmoid'))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 model.load_weights(model_file)
+
+min = -40
+max = 40
 
 predictions = []
 for sample in test_samples:
     X = su.spectrogram_from_file(filename=sample[0], max_freq=8000)
     if X is None:
         continue;
-    X = su.prepare_feedforward_data(X, look_back=look_back)[0].reshape(1, look_back*23)
+    X = su.prepare_simple_feedforward_data(X, look_back=look_back)[0].reshape(1, look_back*161)
+    X = np.asarray([(sample-min)/(max-min) for sample in X]).reshape(1, look_back*161)
     y = sample[1]
     prediction = model.predict(X, batch_size=1, verbose=2)
+    if prediction > 0.5:
+        prediction = 1
+    else:
+        prediction = 0
     predictions.append(prediction == y)
 
     #train_sample = random.choice(test_samples)
