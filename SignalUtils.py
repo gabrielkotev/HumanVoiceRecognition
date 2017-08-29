@@ -162,7 +162,7 @@ def spectrogram_from_file(filename, step=10, window=20, max_freq=None,
 
 def combine_waves(voice_dir, noise_dir, combine_dir):
     for file in listdir(path=voice_dir):
-        for i in range(2):
+        for i in range(10):
             try:
                 sound1 = AudioSegment.from_wav(voice_dir + file)
                 noise_wav = random.choice(listdir(noise_dir))

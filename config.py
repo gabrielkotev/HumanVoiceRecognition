@@ -6,3 +6,6 @@ noise_dir = "D:/dataset/other/"
 
 def get_mapping_paths():
     return [(combined_dir, 1), (fixed_noise_dir, 0), (fixed_voice_dir, 1)]
+
+def get_scaled_coef():
+    return -40, 40

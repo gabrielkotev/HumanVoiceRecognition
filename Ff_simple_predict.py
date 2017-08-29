@@ -32,7 +32,7 @@ model.add(Dense(100, input_dim=look_back*161))
 model.add(Dense(60, activation='sigmoid'))
 model.add(Dense(60, activation='sigmoid'))
 model.add(Dense(120, activation='sigmoid'))
-model.add(Dense(1, activation='sigmoid'))
+model.add(Dense(1, activation='step'))
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 model.load_weights(model_file)
 

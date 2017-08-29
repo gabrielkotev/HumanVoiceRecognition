@@ -9,18 +9,10 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras import optimizers
 from sklearn.preprocessing import MinMaxScaler
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import cross_val_score, KFold
 import config
 import matplotlib.pyplot as plt
-
-def build_logistic_regression_model(look_back):
-    model = Sequential()
-    model.add(Dense(120, input_dim=look_back*161))
-    model.add(Dense(60, activation='sigmoid'))
-    model.add(Dense(30, activation='sigmoid'))
-    model.add(Dense(120, activation='sigmoid'))
-    model.add(Dense(1, activation='sigmoid'))
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    return model
 
 paths_mapping = config.get_mapping_paths()
 files_mapping = []
@@ -31,7 +23,19 @@ test_index = int(0.6 * len(files_mapping))
 train_samples = files_mapping[0:test_index]
 test_samples = files_mapping[test_index:len(files_mapping)]
 
+
+
 look_back = 5
+
+def build_logistic_regression_model():
+    model = Sequential()
+    model.add(Dense(120, input_dim=look_back*161))
+    model.add(Dense(60, activation='sigmoid'))
+    model.add(Dense(30, activation='sigmoid'))
+    model.add(Dense(120, activation='sigmoid'))
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
 
 sc = MinMaxScaler()
 
@@ -56,22 +60,25 @@ X = X.reshape(int(X.shape[0]) / (161 *  look_back), 161 *  look_back)
 X = sc.fit_transform(X)
 
 batch_size=32
-epochs = 20
+epochs = 200
 model_file = "d:/dataset/simple_model.h5"
 
-model = Sequential()
-model.add(Dense(120, input_dim=look_back*161))
-model.add(Dense(60, activation='sigmoid'))
-model.add(Dense(30, activation='sigmoid'))
-model.add(Dense(120, activation='sigmoid'))
-model.add(Dense(1, activation='sigmoid'))
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+#model = Sequential()
+#model.add(Dense(120, input_dim=look_back*161))
+#model.add(Dense(60, activation='sigmoid'))
+#model.add(Dense(30, activation='sigmoid'))
+#model.add(Dense(120, activation='sigmoid'))
+#model.add(Dense(1, activation='sigmoid'))
+#model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-#callback = [EarlyStopping(monitor='loss', patience=10, mode='auto')]
-fit_history = model.fit(X, y, batch_size=batch_size, epochs=epochs)
+#callback = [EarlyStopping(monitor='val_loss', patience=10, mode='auto')]
+#fit_history = model.fit(X, y, batch_size=batch_size, epochs=epochs, verbose=2, validation_split=0.3, callbacks=callback)
 
-model.save_weights(model_file)
+#model.save_weights(model_file)
 
+model = KerasClassifier(build_fn=build_logistic_regression_model, epochs=epochs)
+cv = KFold(5, shuffle=True)
+scores = cross_val_score(model, X, y, cv=cv)
 
 #evaluation of the model
 y=[]
