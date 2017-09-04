@@ -167,6 +167,7 @@ def combine_waves(voice_dir, noise_dir, combine_dir):
                 sound1 = AudioSegment.from_wav(voice_dir + file)
                 noise_wav = random.choice(listdir(noise_dir))
                 sound2 = AudioSegment.from_wav(noise_dir + noise_wav)
+                sound2 = sound2 - 15
                 newone = sound1.overlay(sound2, loop=True)
                 newone.export(combine_dir + str(i) +  file, format='wav')
             except:
