@@ -11,6 +11,10 @@ noise_dir = "D:/dataset/other/"
 def get_mapping_paths():
     return [(combined_dir, 1), (fixed_noise_dir, 0), (fixed_voice_dir, 1)]
 
+
+'''
+
+'''
 for file in listdir(voice_dir):   
     deleted = su.delete_if_unsuitable(voice_dir + file)
     if deleted:

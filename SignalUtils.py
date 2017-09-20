@@ -23,7 +23,6 @@ def prepare_simple_feedforward_data(X, look_back = 5):
         end_point += step
 
     new_data = np.asarray(new_data, dtype=float)
-    print(new_data.shape)
     return new_data.reshape(int(len(new_data) / (step * look_back)), step * look_back)
 
 def prepare_feedforward_data(X, look_back = 5):
@@ -49,15 +48,6 @@ def prepare_feedforward_data(X, look_back = 5):
         end_point += step
 
     return np.reshape(new_data, (int(len(new_data) / (step * look_back)), step * look_back))
-
-def prepare_lstm_data(X, batch_size=32):
-    print(X.shape)
-    rows = X.shape[0]
-    cols = X.shape[1]
-
-    result = X.flatten()
-    result = X.reshape(rows, 1, cols)
-    return result[0:32]
 
 def get_samples():
     paths_mapping = [(DATA_SET_COMBINE_VOICE, 1), (DATA_SET_NOISE_PATH, 0), (DATA_SET_FOLDER_PATH, 1)]
@@ -159,6 +149,25 @@ def spectrogram_from_file(filename, step=10, window=20, max_freq=None,
         return None
     ind = np.where(freqs <= max_freq)[0][-1] + 1
     return np.transpose(np.log(pxx[:ind, :] + eps))
+    
+def spectrogram_from_data(audio, sample_rate, step=10, window=20, max_freq=None,
+                          eps=1e-14):
+    if audio.ndim >= 2:
+        audio = np.mean(audio, 1)
+    if max_freq is None:
+        max_freq = sample_rate / 2
+    if max_freq > sample_rate / 2:
+        return None
+    if step > window:
+        raise ValueError("step size must not be greater than window size")
+    hop_length = int(0.001 * step * sample_rate)
+    fft_length = int(0.001 * window * sample_rate)
+    pxx, freqs = spectrogram(audio, fft_length=fft_length, sample_rate=sample_rate,
+        hop_length=hop_length)
+    if pxx is None:
+        return None
+    ind = np.where(freqs <= max_freq)[0][-1] + 1
+    return np.transpose(np.log(pxx[:ind, :] + eps))
 
 def combine_waves(voice_dir, noise_dir, combine_dir):
     for file in listdir(path=voice_dir):
@@ -184,13 +193,15 @@ def clear_white_noise(filename, old_path, new_path):
     wav_array = np.array(new_audio)
     wav_array = _take_max_sec(frame_rate, wav_array)
     wavfile.write(new_path + filename, frame_rate, wav_array)
+    
+def save_as_wavfile(wav_array, frame_rate, path, file_name):
+    wavfile.write(path + file_name, frame_rate, wav_array)
 
 def shorten(filename, old_path, new_path):
     frame_rate, audio_bytes = wavfile.read(old_path + filename)
     if audio_bytes.shape[0] < frame_rate:
         remove(old_path + filename)
         return
-    print(audio_bytes.shape)
     wav_array = _take_max_sec(frame_rate, audio_bytes)
     try:
         wavfile.write(new_path + filename, frame_rate, wav_array)

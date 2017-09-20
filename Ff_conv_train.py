@@ -6,7 +6,7 @@ import random
 import matplotlib.pyplot as plt
 from keras.callbacks import EarlyStopping
 from keras.models import Sequential
-from keras.layers import Dense, Conv1D, BatchNormalization, MaxPool1D, Flatten
+from keras.layers import Dense, Conv1D, BatchNormalization, MaxPool1D, Flatten, Dropout
 from keras import optimizers
 from sklearn.preprocessing import MinMaxScaler
 import config
@@ -34,7 +34,6 @@ for sample in train_samples:
     X = su.prepare_simple_feedforward_data(X, look_back=look_back)
     for x in X:
         data.extend([xx for xx in x])
-        print(len(data))
 
     y.extend([y for y in np.ones(X.shape[0], dtype=float) * sample[1]])
 
@@ -43,13 +42,19 @@ y = y.reshape(y.shape[0], 1)
 y = y.astype('float32')
 
 X = np.asarray(data, dtype=float)
+# reshape for fit transform
+X = X.reshape(int(X.shape[0]) / (161 *  look_back), 161 * look_back)
+print(X.min(), x.max())
 X = sc.fit_transform(X)
+
+X = X.flatten()
 X = X.reshape(int(X.shape[0]) / (161 *  look_back), 161, look_back)
 X = X.astype('float32')
 
-batch_size=32
-epochs = 1
-model_file = "d:/dataset/simple_model.h5"
+batch_size=16
+epochs = 20
+model_file = "d:/dataset/conv_model.h5"
+
 
 model = Sequential()
 model.add(Conv1D(16, 2, input_shape=(161, 5)))
@@ -57,14 +62,14 @@ model.add(MaxPool1D())
 model.add(Conv1D(16, 2))
 model.add(MaxPool1D())
 model.add(Flatten())
-model.add(Dense(120, activation='sigmoid', input_dim=look_back*161))
-#model.add(BatchNormalization())
-model.add(Dense(60, activation='sigmoid'))
-#model.add(BatchNormalization())
-model.add(Dense(30, activation='sigmoid'))
-#model.add(BatchNormalization())
-model.add(Dense(120, activation='sigmoid'))
-#model.add(BatchNormalization())
+model.add(Dense(256, activation='sigmoid', input_dim=look_back*161))
+model.add(Dropout(0.5))
+model.add(Dense(256, activation='sigmoid'))
+model.add(Dropout(0.5))
+model.add(Dense(256, activation='sigmoid'))
+model.add(Dropout(0.5))
+model.add(Dense(256, activation='sigmoid'))
+model.add(Dropout(0.5))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
@@ -75,7 +80,7 @@ model.save_weights(model_file)
 
 
 #evaluation of the model
-y=[]
+y_test=[]
 data=[]
 for sample in test_samples:
     X = su.spectrogram_from_file(filename=sample[0], max_freq=8000)
@@ -84,25 +89,24 @@ for sample in test_samples:
     X = su.prepare_simple_feedforward_data(X, look_back=look_back)
     for x in X:
         data.extend([xx for xx in x])
-        print(len(data))
 
-    y.extend([y for y in np.ones(X.shape[0], dtype=float) * sample[1]])
+    y_test.extend([y for y in np.ones(X.shape[0], dtype=float) * sample[1]])
 
-y = np.asarray(y, dtype=float)
-y = y.reshape(y.shape[0], 1)
+y_test = np.asarray(y_test, dtype=float)
+y_test = y_test.reshape(y_test.shape[0], 1)
 
-X = np.asarray(data, dtype=float)
-X = sc.transform(X)
-X = X.reshape(int(X.shape[0]) / (161 *  look_back), 161,  look_back)
+X_test = np.asarray(data, dtype=float)
+X_test = X_test.reshape(int(X_test.shape[0]) / (161 *  look_back), 161 * look_back)
+X_test = sc.transform(X_test)
+X_test = X_test.flatten()
+X_test = X_test.reshape(int(X_test.shape[0]) / (161 *  look_back), 161,  look_back)
 
-print(X.min())
-print(X.max())
+print(X_test.min())
+print(X_test.max())
 
-evaluation_history = model.evaluate(X, y)
+evaluation_history = model.evaluate(X_test, y_test)
 print(evaluation_history[1])
 plt.plot(fit_history.history['acc'])
-plt.plot(fit_history.history['val_acc'])
-plt.legend('Training', 'Validation')
 plt.title('Accuracy')
 plt.xlabel('Epochs')
 plt.show()
